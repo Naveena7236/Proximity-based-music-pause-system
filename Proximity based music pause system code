@@ -1,0 +1,71 @@
+#include "mp3tf16p.h"
+
+// Define the pins for ultrasonic sensors
+const int trigPins[] = {13, 11, 9, 7}; // Trig pins of Sensors 1 to 4
+const int echoPins[] = {12, 10, 8, 6}; // Echo pins of Sensors 1 to 4
+
+MP3Player player(3, 2); // RX, TX
+
+bool musicPlaying = false; // Flag to track music playback state
+
+void setup() {
+  Serial.begin(9600);
+  player.initialize();
+
+  // Set up ultrasonic sensors
+  for (int i = 0; i < 4; ++i) {
+    pinMode(trigPins[i], OUTPUT);
+    pinMode(echoPins[i], INPUT);
+  }
+
+  // Set LED pins
+  pinMode(5, OUTPUT); // Green LED
+  pinMode(4, OUTPUT); // Red LED
+
+  // Initialize LEDs
+  digitalWrite(5, LOW); // Green LED OFF
+  digitalWrite(4, HIGH); // Red LED ON
+}
+
+void loop() {
+  long distances[4];
+
+  // Measure distances from each sensor
+  for (int i = 0; i < 4; ++i) {
+    distances[i] = getDistance(trigPins[i], echoPins[i]);
+    Serial.print("Distance ");
+    Serial.print(i + 1);
+    Serial.print(": ");
+    Serial.print(distances[i]);
+    Serial.println(" cm");
+  }
+
+  // Stop music and signal with LEDs if any distance is less than 50cm
+  if (distances[0] < 30 || distances[1] < 30 || distances[2] < 30 || distances[3] < 30) {
+    if (musicPlaying) {
+      player.playTrackNumber(0, 0, false); // Stop music
+      musicPlaying = false;
+      digitalWrite(4, HIGH); // Red LED ON
+      digitalWrite(5, LOW); // Green LED OFF
+    }
+  } 
+
+  // Start music and signal with LEDs if not playing and no sensors detect less than 50cm
+  else if (!musicPlaying) {
+    player.playTrackNumber(1, 30, false); // Play music
+    musicPlaying = true;
+    digitalWrite(4, LOW); // Red LED OFF
+    digitalWrite(5, HIGH); // Green LED ON
+  }
+
+  delay(3000); // Delay for stability, adjust as needed
+}
+
+long getDistance(int trigPin, int echoPin) {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  return pulseIn(echoPin, HIGH) * 0.034 / 2;
+}
